@@ -5,7 +5,8 @@ import time
 import tweepy
 from os.path import basename
 import configparser
-import twitterAPI
+import os
+
 config = configparser.ConfigParser()
 config.read('config.ini')
 
@@ -39,15 +40,13 @@ def newArticule():
             urlPoznan = 'http://poznan.pl/'
             articuleImageDownload = urlPoznan.strip(',') + articuleImage.strip()
             articuleImageDownload_response = requests.get(articuleImageDownload)
-            with open('images/image.jpg', 'wb') as f:
-                f.write(articuleImageDownload_response.content)
 
 
             with open('articules/articules.txt', 'w', encoding='utf-8') as f:
                 f.write((f'{articule_title.strip()}\n{articuleDate.strip()}\n{urlPoznan}{articuleLink}'))
 
-            with open('tweet_history_file', 'w') as f:
-                f.write(f'{articule_title}')
+    with open('tweet_history_articule.txt', 'w') as f:
+        f.write(f'{articule_title}')
 
 
 def newAccident():
@@ -62,32 +61,42 @@ def newAccident():
     urlPoznan = 'http://poznan.pl/'
     accidentCategory = failures.find('div', class_='label-awarie').text
     with open('failures/failures.txt', 'w', encoding='utf8') as f:
-        f.write(f'{accidentTitle.strip()}\n{accidentCategory} {urlPoznan}{accidentLink}')   
-    with open('tweet_history_file', 'w') as f:
+        f.write(f'{accidentTitle.strip()}\n{accidentCategory}\n{urlPoznan}{accidentLink}')   
+    with open('tweet_history_accident.txt', 'w') as f:
         f.write(f'{accidentTitle}')
 
 
 
-
-
 def sendArticule(articule):
-    old_articule = newArticule()
-    if id(articule) != id(old_articule):
-        api.update_status(f'{articuleTitle} opublikowany: {articuleDate}\n Link: {articuleLink}')
+    with open('tweet_history_articule.txt', 'r') as history:
+        historyTweet = history.readline()
+    with open('articules/articules.txt', 'r') as articule:
+        articuleTweet = articule.readline()
+    if historyTweet != articuleTweet:
+        api.update_status(f'📰{articuleTitle}📰\n{articuleDate}\nDowiedz się więcej:{articuleLink}')
+
         
 def sendAccident(failure):
-    old_failure = newAccident()
-    if id(failure) != id(old_failure):
-        api.update_status((f'{accidentTitle} opublikowany: {accidentDate}\n Link: {accidentLink}'))
-    
-def add_tweet(tweet):
-    for existing_tweet in tweets:
-        if existing_tweet == tweet:
-            return
-    tweets.append(tweet)
+    with open('tweet_history_accident.txt', 'r') as history:
+        historyTweet = history.readline()
+    with open('failures/failures.txt', 'r') as failure:
+        accidentTweet = failure.readline()
+    if historyTweet != accidentTweet:
+        tweet = f'❗{accidentTitle}❗\n Dowiedz się więcej: {accidentLink}'
+        api.update_status_with_media(filename="image/smartcity.png",status=tweet)
+
+
+
+def read_first_line(file_path):
+    with open(file_path, 'r') as file:
+        first_line = file.readline()
+    return first_line
 
 
 if __name__ == '__main__':
+
+    firstLineOfArticule = read_first_line('tweet_history_articule.txt')
+    firstLineOfAccident = read_first_line('tweet_history_accident.txt')
     sent_tweets = set()
     tweet_history = set()
     while True:
@@ -104,17 +113,17 @@ if __name__ == '__main__':
             accidentDate = f.readline().strip()
             accidentLink = f.readline().strip()
         
-        if articuleTitle not in sent_tweets:
+        if articuleTitle != firstLineOfArticule:
             try:
+                
                 sendArticule(newArticule)
                 sent_tweets.add(articuleTitle)
             except tweepy.errors.Forbidden:
                 time.sleep(1)
         
-        if accidentTitle not in sent_tweets:
+        if accidentTitle != firstLineOfAccident:
             try:
                 sendAccident(newAccident)
                 sent_tweets.add(accidentTitle)
             except tweepy.errors.Forbidden:
                 time.sleep(1)
-            
