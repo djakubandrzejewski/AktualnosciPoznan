@@ -45,7 +45,6 @@ def send_accident():
         accidentCategory = f.readline().strip()
         accidentLink = f.readline().strip()
     accidentImage = 'images/image.png'
-    media = api.media_upload(accidentImage)
 
 
     tweet_text = f"❗️NOWE ZDARZENIE❗️\n\n{accidentTitle}\n\nKategoria: {accidentCategory}\n\nDowiedz się więcej: {accidentLink}"
